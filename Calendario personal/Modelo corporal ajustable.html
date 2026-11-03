@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modelo corporal ajustable</title>
+<style>
+:root{--bg:#14111b;--panel:#1b1723;--text:#f2ecf8;--muted:#b3a8bf;--line:#403248;--accent:#b68bff;box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+#vista{width:100%;height:320px;flex:0 0 auto;position:relative;touch-action:none;cursor:grab;background:radial-gradient(ellipse at 50% 45%,#4a2d6538,transparent 58%)}
+#vista canvas{display:block;width:100%;height:100%}
+#panel{width:auto;flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);padding:18px 20px 20px}
+h1{font-size:16px;margin:0 0 12px}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1;padding:8px;border:1px solid var(--line);background:none;color:var(--text);border-radius:8px;cursor:pointer;font-size:13px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+label{display:block;font-size:13px;color:var(--muted);margin-top:12px}
+label b{color:var(--text);float:right;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--accent)}
+input[type=color]{display:block;width:100%;height:36px;margin-top:6px;border:1px solid var(--line);border-radius:7px;background:none}
+.res{margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.4}
+#cargando{position:absolute;left:12px;top:12px;font-size:12px;color:var(--text);opacity:.7}
+@media(max-width:620px){#vista{height:240px}}
+@media(max-width:480px){#vista{height:230px}#panel{padding:16px}}
+</style>
+</head>
+<body>
+<div id="vista"><span id="cargando"></span></div>
+<div id="panel">
+  <h1>Datos de entrada</h1>
+  <div class="seg" id="sexo" aria-label="Sexo para ajustar las proporciones del modelo"><button data-sex="female" class="on" type="button">Mujer</button><button data-sex="male" type="button">Hombre</button></div>
+  <label for="altura">Altura (cm) <b id="valtura"></b></label><input id="altura" type="range" min="140" max="200" value="163">
+  <label for="peso">Peso (kg) <b id="vpeso"></b></label><input id="peso" type="range" min="40" max="110" value="62">
+  <label for="pulso">Pulso (lpm) <b id="vpulso"></b></label><input id="pulso" type="range" min="40" max="180" value="70">
+  <label for="color">Tono de piel</label><input id="color" type="color" value="#c9a27e">
+  <div class="seg"><button id="bFrente">Frente</button><button id="bLado">Lado</button><button id="bAuto">Giro</button></div>
+  <div class="res" id="res"></div>
+  <div class="hint">Hombros, piernas y postura se calculan solos según sexo, altura y peso. Altura limitada a 200 cm y peso a un rango de IMC 15 a 42. Arrastra para rotar, rueda o pellizco para acercar. Desde tu web: <code>actualizarModelo({sex:"male", altura:180, peso:85})</code> o <code>postMessage({modelo3d:{...}})</code> en un iframe.</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function smin(a,b,k){var h=Math.max(k-Math.abs(a-b),0)/k;return Math.min(a,b)-h*h*k*0.25;}
+function profile(K,N,y0,y1){
+  var n=K.length,out=[],s,i,j;
+  var M=K.map(function(r,q){var a=K[Math.max(q-1,0)],b=K[Math.min(q+1,n-1)];
+    return r.map(function(_,c){return c===0?0:(b[c]-a[c])/(b[0]-a[0]);});});
+  for(s=0;s<N;s++){
+    var y=y0+(y1-y0)*s/(N-1);i=0;while(i<n-2&&y>K[i+1][0])i++;
+    var dy=K[i+1][0]-K[i][0],t=clamp((y-K[i][0])/dy,0,1),t2=t*t,t3=t2*t,row=[];
+    for(j=1;j<K[0].length;j++)row.push((2*t3-3*t2+1)*K[i][j]+(t3-2*t2+t)*dy*M[i][j]+(-2*t3+3*t2)*K[i+1][j]+(t3-t2)*dy*M[i+1][j]);
+    out.push(row);
+  }
+  return out;
+}
+function lerpT(T,y){
+  var n=T.length;if(y<=T[0][0])return T[0].slice(1);if(y>=T[n-1][0])return T[n-1].slice(1);
+  for(var i=0;i<n-1;i++)if(y<=T[i+1][0]){var t=(y-T[i][0])/(T[i+1][0]-T[i][0]);
+    return T[i].slice(1).map(function(v,j){return v+(T[i+1][j+1]-v)*t;});}
+}
+
+function makeBody(P,vox){
+  var f=P.sex==='female',h=P.altura/100,imc=P.peso/(h*h),m=clamp((imc-22)/45,-.12,.18);
+  var c0=f?.465:.47,crotch=c0,kk=(1-crotch)/(1-c0);
+  var Y=function(y){return crotch+(y-c0)*kk;};
+  var sw=1,th=(14+12*clamp((m+.12)/.3,0,1))*Math.PI/180;
+  var prims=[],K=.022,G=0;
+  function add(fn,x0,y0,z0,x1,y1,z1){prims.push({f:fn,g:G,b:[x0,y0,z0,x1,y1,z1]});}
+  function E(cx,cy,cz,rx,ry,rz){
+    add(function(x,y,z){
+      var px=(x-cx)/rx,py=(y-cy)/ry,pz=(z-cz)/rz,k0=Math.sqrt(px*px+py*py+pz*pz);
+      var qx=px/rx,qy=py/ry,qz=pz/rz,k1=Math.sqrt(qx*qx+qy*qy+qz*qz);
+      return k1<1e-9?-Math.min(rx,ry,rz):k0*(k0-1)/k1;
+    },cx-rx,cy-ry,cz-rz,cx+rx,cy+ry,cz+rz);
+  }
+  function RC(a,b,r1,r2){
+    var bx=b[0]-a[0],by=b[1]-a[1],bz=b[2]-a[2],l2=bx*bx+by*by+bz*bz,rr=r1-r2,a2=l2-rr*rr,il2=1/l2;
+    var fn=function(x,y,z){
+      var px=x-a[0],py=y-a[1],pz=z-a[2],yy=px*bx+py*by+pz*bz,zz=yy-l2;
+      var ux=px*l2-bx*yy,uy=py*l2-by*yy,uz=pz*l2-bz*yy,x2=ux*ux+uy*uy+uz*uz,y2=yy*yy*l2,z2=zz*zz*l2;
+      var k=Math.sign(rr)*rr*rr*x2;
+      if(Math.sign(zz)*a2*z2>k)return Math.sqrt(x2+z2)*il2-r2;
+      if(Math.sign(yy)*a2*y2<k)return Math.sqrt(x2+y2)*il2-r1;
+      return (Math.sqrt(x2*a2*il2)+yy*rr)*il2-r1;
+    };
+    var r=Math.max(r1,r2);
+    add(fn,Math.min(a[0],b[0])-r,Math.min(a[1],b[1])-r,Math.min(a[2],b[2])-r,Math.max(a[0],b[0])+r,Math.max(a[1],b[1])+r,Math.max(a[2],b[2])+r);
+  }
+
+  // ---- torso: secciones elípticas con perfil suave ----
+  var MC=f?[[.44,.9,.8],[.5,.9,.9],[.6,.8,1.3],[.66,.6,.8],[.72,.4,.45],[.78,.1,.1]]
+          :[[.44,.6,.7],[.5,.6,.7],[.6,.9,1.8],[.66,.7,1.2],[.72,.4,.45],[.78,.1,.1]];
+  var KT=f?[[.44,.062,.048,0],[.47,.072,.054,-.002],[.505,.074,.058,-.004],[.55,.070,.050,-.002],[.60,.050,.040,0],[.64,.054,.042,0],[.685,.064,.049,.001],[.72,.069,.054,.003],[.75,.070,.050,.001],[.775,.074,.042,0],[.79,.05,.034,0],[.805,.03,.028,0]]
+          :[[.44,.060,.050,0],[.47,.078,.056,-.002],[.505,.084,.058,-.003],[.55,.080,.056,0],[.60,.074,.058,.001],[.64,.080,.060,.002],[.685,.090,.062,.004],[.72,.097,.066,.006],[.75,.098,.062,.004],[.775,.098,.050,0],[.79,.062,.040,0],[.805,.036,.032,0]];
+  var keys=KT.map(function(r){
+    var c=lerpT(MC,r[0]),s=1+(sw-1)*clamp((r[0]-.62)/.13,0,1);
+    return [Y(r[0]),r[1]*s*(1+c[0]*m),r[2]*(1+c[1]*m),r[3]];
+  });
+  var T0=keys[0][0],T1=keys[keys.length-1][0],N=128,tab=profile(keys,N,T0,T1),inv=(N-1)/(T1-T0),mxr=0;
+  tab.forEach(function(r){mxr=Math.max(mxr,r[0]);});
+  add(function(x,y,z){
+    var yc=y<T0?T0:y>T1?T1:y,u=(yc-T0)*inv,i=Math.min(u|0,N-2),t=u-i,a=tab[i],b=tab[i+1];
+    var rx=a[0]+(b[0]-a[0])*t,rz=a[1]+(b[1]-a[1])*t,cz=a[2]+(b[2]-a[2])*t;
+    var qx=x/rx,qz=(z-cz)/rz,k0=Math.sqrt(qx*qx+qz*qz),k1=Math.sqrt(qx*qx/(rx*rx)+qz*qz/(rz*rz));
+    var d2=k1<1e-9?-Math.min(rx,rz):k0*(k0-1)/k1,wy=Math.max(T0-y,y-T1);
+    return Math.min(Math.max(d2,wy),0)+Math.hypot(Math.max(d2,0),Math.max(wy,0));
+  },-mxr,T0,-.12,mxr,T1,.12);
+
+  E(0,crotch+.012,-.002,.066,.042,.052);               // pelvis / entrepierna
+  var sx=(f?.105:.118)*sw;
+
+  [-1,1].forEach(function(d){
+    // gluteos
+    E(d*(f?.044:.042),Y(.495),f?-.046:-.04,(f?.052:.046)*(1+.5*m),(f?.058:.052),(f?.05:.044)*(1+.7*m));
+    // busto / pectoral
+    if(f)E(d*.036,Y(.715),.04*(1+.1*m),.034*(1+.6*m),.032*(1+.3*m),.034*(1+.6*m));
+    else E(d*.042,Y(.725),.044,.046,.033,.024);
+    // trapecio
+    E(d*.043,Y(.785),-.01,.05,.02,.03);
+
+    // brazos
+    var S=[d*sx,Y(.765),0],ar=1+.5*m;
+    var rS=(f?.033:.040)*(1+.3*m);
+    E(S[0],S[1],0,rS,rS*1.05,rS);
+    var d1=[d*Math.sin(th),-Math.cos(th),.03],l1=Math.hypot(d1[0],d1[1],d1[2]);
+    var Eb=[S[0]+d1[0]/l1*.185,S[1]+d1[1]/l1*.185,S[2]+d1[2]/l1*.185];
+    var t2=th+.04,d2=[d*Math.sin(t2),-Math.cos(t2),.07],l2=Math.hypot(d2[0],d2[1],d2[2]);
+    var W=[Eb[0]+d2[0]/l2*.15,Eb[1]+d2[1]/l2*.15,Eb[2]+d2[2]/l2*.15];
+    RC(S,Eb,(f?.031:.037)*ar,(f?.0215:.026)*ar);
+    RC(Eb,W,(f?.0225:.027)*ar,(f?.0135:.0165));
+    var hc=[W[0]+d2[0]/l2*.048,W[1]+d2[1]/l2*.048,W[2]+d2[2]/l2*.048];
+    E(hc[0],hc[1],hc[2],f?.0095:.011,.047,f?.019:.022);
+    RC(W,[W[0]+d2[0]/l2*.1,W[1]+d2[1]/l2*.1,W[2]+d2[2]/l2*.1],.0125,.008);
+
+    // piernas
+    G=d<0?1:2;
+    var lx=f?.054:.05,hy=crotch+.02,kx=lx*.86,ky=.05+(hy-.05)*.5-.005,ax=lx*.78;
+    var t0=(f?.05:.055)*(1+.7*m);
+    RC([lx,hy,-.002],[kx,ky,.005],t0,.034*(1+.35*m));
+    RC([kx,ky,.005],[ax,.05,-.004],.034*(1+.35*m),.019*(1+.25*m));
+    E(kx,ky-(ky-.05)*.3,-.012,.031*(1+.35*m),.065,.035*(1+.35*m));   // pantorrilla
+    E(kx+d*.006,ky+(hy-ky)*.42,.004,.036*(1+.5*m),.08,.04*(1+.5*m));        // volumen del muslo
+    // pie (ligeramente abierto)
+    var ang=d*.2,ca=Math.cos(ang),sa=Math.sin(ang),fx=ax*d,fz=-.012;
+    function loc(x,z){var dx=x-fx,dz=z-fz;return [dx*ca-dz*sa,dx*sa+dz*ca];}
+    function ell2(cx,cy,cz,rx,ry,rz){return function(x,y,z){var l=loc(x,z),px=l[0]/rx,py=(y-cy)/ry,pz=(l[1]-cz)/rz,k0=Math.sqrt(px*px+py*py+pz*pz),k1=Math.sqrt(px*px/(rx*rx)+py*py/(ry*ry)+pz*pz/(rz*rz));return k1<1e-9?-rx:k0*(k0-1)/k1;};}
+    var f1=ell2(0,.021,.036,.021,.021,.06),f2=ell2(0,.012,.088,.019,.011,.022);
+    add(function(x,y,z){return smin(f1(x,y,z),f2(x,y,z),.012);},fx-.1,0,-.06,fx+.1,.06,.14);
+    G=0;
+  });
+
+  // ---- cuello y cabeza ----
+  var nk=f?.025:.03;
+  RC([0,Y(.79),-.006],[0,.875,.003],nk*1.1,nk);
+  E(0,.935,-.004,.046,.066,.055);      // craneo
+  E(0,.9,.012,.033,.038,.041);        // mandibula
+  E(0,.909,.054,.0065,.014,.012);     // nariz
+
+  // ---- malla ----
+  var xm=Math.max(.2,sx+.44*Math.sin(th)+.05),Y0=-.012,Y1=1.012,Z0=-.115,Z1=.125;
+  var nx=2*Math.ceil(xm/vox)+1,cI=(nx-1)/2,ny=Math.ceil((Y1-Y0)/vox)+1,nz=Math.ceil((Z1-Z0)/vox)+1,np=prims.length;
+  var F=new Float32Array(nx*ny*nz),i,j,k,q;
+  for(k=0;k<nz;k++){var z=Z0+k*vox;
+    for(j=0;j<ny;j++){var y=Y0+j*vox;
+      for(i=cI;i<nx;i++){
+        var x=(i-cI)*vox,ac=[1e9,1e9,1e9],d;
+        for(q=0;q<np;q++){var p=prims[q],b=p.b,g=p.g,kg=g?.014:K;
+          var dx=Math.max(b[0]-x,0,x-b[3]),dy=Math.max(b[1]-y,0,y-b[4]),dz=Math.max(b[2]-z,0,z-b[5]);
+          if(Math.sqrt(dx*dx+dy*dy+dz*dz)>ac[g]+kg)continue;
+          var v=p.f(x,y,z);ac[g]=ac[g]>1e8?v:smin(ac[g],v,kg);
+        }
+        d=smin(ac[0],Math.min(ac[1],ac[2]),K);
+        F[i+nx*(j+ny*k)]=d;F[2*cI-i+nx*(j+ny*k)]=d;
+      }}}
+  var cell=new Int32Array(nx*ny*nz).fill(-1),pos=[],vals=new Float32Array(8);
+  var EG=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  for(k=0;k<nz-1;k++)for(j=0;j<ny-1;j++)for(i=0;i<nx-1;i++){
+    var i0=i+nx*(j+ny*k),mask=0,mm;
+    for(mm=0;mm<8;mm++){var vv=F[i0+(mm&1)+nx*(((mm>>1)&1)+ny*((mm>>2)&1))];vals[mm]=vv;if(vv<0)mask|=1<<mm;}
+    if(mask===0||mask===255)continue;
+    var sX=0,sY=0,sZ=0,n=0;
+    for(var e=0;e<12;e++){var a=EG[e][0],b2=EG[e][1];
+      if(((mask>>a)&1)!==((mask>>b2)&1)){var t=vals[a]/(vals[a]-vals[b2]);
+        sX+=(a&1)+t*((b2&1)-(a&1));sY+=((a>>1)&1)+t*(((b2>>1)&1)-((a>>1)&1));sZ+=((a>>2)&1)+t*(((b2>>2)&1)-((a>>2)&1));n++;}}
+    cell[i0]=pos.length/3;pos.push((i+sX/n-cI)*vox,Y0+(j+sY/n)*vox,Z0+(k+sZ/n)*vox);
+  }
+  var idx=[];
+  function C(a,b,c){return cell[a+nx*(b+ny*c)];}
+  function quad(a,b,c,d2,inside){
+    if(a<0||b<0||c<0||d2<0)return;
+    if(inside)idx.push(a,b,c,a,c,d2);else idx.push(a,c,b,a,d2,c);
+  }
+  for(k=1;k<nz-1;k++)for(j=1;j<ny-1;j++)for(i=1;i<nx-1;i++){
+    var p0=F[i+nx*(j+ny*k)]<0;
+    if((F[i+1+nx*(j+ny*k)]<0)!==p0)quad(C(i,j,k),C(i,j-1,k),C(i,j-1,k-1),C(i,j,k-1),p0);
+    if((F[i+nx*(j+1+ny*k)]<0)!==p0)quad(C(i,j,k),C(i,j,k-1),C(i-1,j,k-1),C(i-1,j,k),p0);
+    if((F[i+nx*(j+ny*(k+1))]<0)!==p0)quad(C(i,j,k),C(i-1,j,k),C(i-1,j-1,k),C(i,j-1,k),p0);
+  }
+  return {pos:new Float32Array(pos),idx:new Uint32Array(idx),c0:Y(.62),c1:Y(.78)};
+}
+if(typeof module!=='undefined')module.exports={makeBody};
+(function(){
+  var $=function(i){return document.getElementById(i);};
+  var cont=$('vista');
+  var scene=new THREE.Scene();
+  var camera=new THREE.PerspectiveCamera(40,1,0.05,50);
+  var renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  cont.appendChild(renderer.domElement);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x9aa0ad,0.85));
+  var key=new THREE.DirectionalLight(0xffffff,0.75);key.position.set(0.6,2,4);scene.add(key);
+  var fill=new THREE.DirectionalLight(0xffffff,0.3);fill.position.set(-3,1,-2);scene.add(fill);
+  var mat=new THREE.MeshStandardMaterial({color:0xc9a27e,roughness:0.9,metalness:0,side:THREE.DoubleSide});
+  var root=new THREE.Group();scene.add(root);
+
+  var cv=document.createElement('canvas');cv.width=cv.height=128;
+  var c2=cv.getContext('2d'),gr=c2.createRadialGradient(64,64,4,64,64,62);
+  gr.addColorStop(0,'rgba(0,0,0,0.4)');gr.addColorStop(1,'rgba(0,0,0,0)');c2.fillStyle=gr;c2.fillRect(0,0,128,128);
+  var blob=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=0.001;blob.scale.set(0.5,0.28,1);root.add(blob);
+
+  var P={sex:'female',altura:163,peso:62,pulso:70,color:'#c9a27e'};
+  var D={female:{altura:163,peso:62},male:{altura:177,peso:78}};
+  function notifyParent(){
+    window.parent.postMessage({type:'kagami:model-change',modelo3d:{sex:P.sex,altura:P.altura,peso:P.peso,pulso:P.pulso,color:P.color}},'*');
+  }
+  var NUM=['altura','peso','pulso'];
+  var mesh=null,baseP=null,chest=[],sgn=1,dist=1,hM=1.63;
+
+  function range(){
+    var h=P.altura/100,mn=Math.ceil(15*h*h),mx=Math.floor(42*h*h);
+    P.altura=clamp(Math.round(P.altura),140,200);
+    $('peso').min=mn;$('peso').max=mx;P.peso=clamp(Math.round(P.peso),mn,mx);
+  }
+  function build(vox){
+    range();
+    var B=makeBody(P,vox),g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(B.pos,3));
+    g.setIndex(new THREE.BufferAttribute(B.idx,1));
+    g.computeVertexNormals();
+    if(mesh){root.remove(mesh);mesh.geometry.dispose();}
+    mat.color.set(P.color);
+    mesh=new THREE.Mesh(g,mat);root.add(mesh);
+    hM=P.altura/100;root.scale.setScalar(hM);
+    var p=B.pos,n=g.attributes.normal.array,dot=0,i;
+    for(i=0;i<p.length;i+=3)dot+=n[i]*p[i]+n[i+2]*p[i+2]+n[i+1]*(p[i+1]-.5);
+    sgn=dot>=0?1:-1;
+    baseP=new Float32Array(p);chest=[];
+    for(i=0;i<p.length/3;i++){var y=p[i*3+1];
+      if(y>B.c0&&y<B.c1&&Math.abs(p[i*3])<.14){var t=(y-B.c0)/(B.c1-B.c0);chest.push(i,Math.pow(Math.sin(Math.PI*t),1.5));}}
+    labels();fit();
+  }
+  function fit(){var a=camera.aspect||1,d=Math.max(1.65*hM,.85*hM/a)*dist;camera.position.set(0,.5*hM,d);camera.lookAt(0,.5*hM,0);}
+  function labels(){
+    NUM.forEach(function(k){$('v'+k).textContent=P[k];$(k).value=P[k];});
+    $('color').value=P.color;
+    var h=P.altura/100,imc=P.peso/(h*h);
+    var cat=imc<18.5?'bajo peso':imc<25?'rango normal':imc<30?'sobrepeso':'obesidad';
+    $('res').innerHTML='IMC estimado: <b>'+imc.toFixed(1)+'</b> ('+cat+')<br><span class="hint">Orientativo; no es un diagnóstico médico.</span>';
+    document.querySelectorAll('#sexo button').forEach(function(b){b.classList.toggle('on',b.dataset.sex===P.sex);});
+    notifyParent();
+  }
+  var pending=null,busy=false;
+  function request(coarse){pending=coarse;if(busy)return;busy=true;$('cargando').textContent='Calculando…';
+    setTimeout(function run(){var q=pending;pending=null;build(q?0.011:0.007);busy=false;if(pending!==null){busy=true;setTimeout(run,0);}else $('cargando').textContent='';},16);}
+
+  NUM.concat(['color']).forEach(function(k){
+    var el=$(k);
+    el.addEventListener('input',function(){P[k]=k==='color'?el.value:parseFloat(el.value);notifyParent();if(k==='pulso'){labels();return;}request(true);});
+    el.addEventListener('change',function(){P[k]=k==='color'?el.value:parseFloat(el.value);notifyParent();if(k!=='pulso')request(false);});
+  });
+  document.querySelectorAll('#sexo button').forEach(function(b){
+    b.addEventListener('click',function(){P.sex=b.dataset.sex;P.altura=D[P.sex].altura;P.peso=D[P.sex].peso;notifyParent();request(false);});
+  });
+  window.actualizarModelo=function(d){
+    d=d||{};var s=String(d.sex||d.sexo||'').toLowerCase();
+    if(['mujer','female','f','hombre','male','m'].indexOf(s)>=0){
+      P.sex=(s==='mujer'||s==='female'||s==='f')?'female':'male';P.altura=D[P.sex].altura;P.peso=D[P.sex].peso;}
+    NUM.forEach(function(k){if(d[k]!=null&&!isNaN(parseFloat(d[k])))P[k]=parseFloat(d[k]);});
+    if(d.color)P.color=String(d.color);
+    request(false);
+  };
+  window.addEventListener('message',function(e){if(e.data&&e.data.modelo3d)window.actualizarModelo(e.data.modelo3d);});
+
+  var rotY=0.3,drag=false,lastX=0,auto=false;
+  cont.addEventListener('pointerdown',function(e){drag=true;auto=false;lastX=e.clientX;cont.setPointerCapture(e.pointerId);cont.style.cursor='grabbing';});
+  cont.addEventListener('pointermove',function(e){if(!drag)return;rotY+=(e.clientX-lastX)*0.01;lastX=e.clientX;});
+  cont.addEventListener('pointerup',function(){drag=false;cont.style.cursor='grab';});
+  cont.addEventListener('wheel',function(e){e.preventDefault();dist=clamp(dist+e.deltaY*0.001,0.4,1.6);fit();},{passive:false});
+  $('bFrente').onclick=function(){auto=false;rotY=0;};
+  $('bLado').onclick=function(){auto=false;rotY=Math.PI/2;};
+  $('bAuto').onclick=function(){auto=true;};
+  function resize(){var w=cont.clientWidth,h=cont.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();fit();}
+  window.addEventListener('resize',resize);
+
+  var t0=performance.now();
+  (function loop(){
+    if(mesh&&chest.length){
+      var s=Math.sin((performance.now()-t0)/1000*2*Math.PI*P.pulso/60)*.0035,pa=mesh.geometry.attributes.position,na=mesh.geometry.attributes.normal.array,a=pa.array;
+      for(var q=0;q<chest.length;q+=2){var i=chest[q]*3,w=chest[q+1]*s*sgn;a[i]=baseP[i]+na[i]*w;a[i+2]=baseP[i+2]+na[i+2]*w;}
+      pa.needsUpdate=true;
+    }
+    if(auto)rotY+=0.006;
+    root.rotation.y=rotY;
+    renderer.render(scene,camera);
+    requestAnimationFrame(loop);
+  })();
+  resize();build(0.007);
+})();
+</script>
+</body>
+</html>

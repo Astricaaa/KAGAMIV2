@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0710" />
+    <title>Kagami — tu espacio, a tu ritmo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=DM+Sans:wght@400;500&family=Fredoka:wght@500;600;700&family=Geist:wght@400;500;600&family=Parisienne&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=12" />
+  </head>
+  <body>
+    <main id="app">
+      <section id="intro" class="screen intro-screen">
+        <div class="intro-content">
+          <div class="brand brand-light"><span class="brand-mark">k</span><span>kagami</span></div>
+          <div class="intro-copy">
+            <h1>Bienvenido de nuevo,<br /><span>Astra.</span></h1>
+            <button id="start-button" class="button button-light">Entrar a Kagami <span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <div class="intro-nebula" aria-hidden="true"></div>
+      </section>
+
+      <section id="auth" class="screen auth-screen hidden">
+        <div class="auth-visual">
+          <div class="brand brand-light"><span class="brand-mark">k</span><span>kagami</span></div>
+          <div class="auth-visual-copy">
+            <h2>“No hay rival más difícil de vencer que uno mismo; pero quien se conoce a sí mismo tiene la mejor oportunidad de hacerlo.”</h2>
+          </div>
+          <div class="auth-visual-bottom"><span>✦</span> Tu vida, con más intención</div>
+          <div class="auth-glow"></div>
+        </div>
+        <div class="auth-form-side">
+          <div class="auth-mobile-brand brand"><span class="brand-mark">k</span><span>kagami</span></div>
+          <div class="auth-form-wrap">
+            <div class="step-kicker"><span class="step-dot"></span> ACCESO SEGURO</div>
+            <h1 id="auth-title">Qué gusto tenerte aquí.</h1>
+            <p id="auth-subtitle" class="muted">Ingresa a tu espacio personal.</p>
+            <form id="auth-form">
+              <label for="username">Usuario</label>
+              <input id="username" name="username" autocomplete="username" placeholder="Tu nombre de usuario" required />
+              <div id="password-group">
+                <label for="password">Contraseña</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required minlength="4" />
+              </div>
+              <p id="auth-error" class="form-error" role="alert"></p>
+              <button id="auth-submit" class="button button-primary button-full" type="submit">Entrar a mi espacio <span>→</span></button>
+            </form>
+            <div class="auth-links">
+              <button id="create-account" class="text-button">Crear una cuenta</button>
+            </div>
+            <p class="demo-note">Prototipo local: las cuentas se guardan solo en este navegador; no hay una base de datos compartida.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="onboarding" class="screen onboarding-screen hidden">
+        <div class="onboarding-card">
+          <div class="onboarding-sidebar">
+            <div class="brand onboarding-brand"><span class="brand-mark">k</span><span>kagami</span></div>
+            <div class="onboarding-art" aria-hidden="true">
+              <div class="onboarding-orbit"></div>
+              <div class="onboarding-planet"></div>
+              <span class="onboarding-satellite satellite-one"></span>
+              <span class="onboarding-satellite satellite-two"></span>
+              <div class="onboarding-mountains"></div>
+            </div>
+            <p class="onboarding-message">Este espacio se adapta a ti.<br /><b>No al revés.</b></p>
+            <div class="onboarding-steps" id="onboarding-steps" aria-label="Progreso del onboarding">
+              <span class="onboarding-step active">Tu vida</span>
+              <span class="onboarding-step">Tu ritmo</span>
+              <span class="onboarding-step">Tus objetivos</span>
+            </div>
+          </div>
+          <div class="question-panel">
+            <div class="question-topline">
+              <span class="question-overline">CONFIGURACIÓN INICIAL</span>
+              <span class="onboarding-progress-label">PASO <b id="question-progress">1 DE 3</b></span>
+            </div>
+            <div id="question-content"></div>
+            <label id="onboarding-consent-label" class="onboarding-consent hidden">
+              <input id="onboarding-consent" type="checkbox" />
+              <span>Acepto guardar mi progreso y preferencias en este dispositivo.</span>
+            </label>
+            <div class="question-actions">
+              <button id="question-back" class="button button-quiet" type="button">← Atrás</button>
+              <button id="question-next" class="button button-primary" type="button">Continuar <span>→</span></button>
+            </div>
+            <p id="question-error" class="form-error" role="alert"></p>
+            <p class="onboarding-footnote">Sin sincronización entre dispositivos. Puedes cambiar tus preferencias después.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard" class="screen dashboard-screen hidden">
+        <header class="topbar">
+          <div class="brand"><img class="brand-mark" src="Astra.jpg" alt="Astra" /><span>kagami</span><span class="brand-divider">/</span><span id="workspace-user-name" class="workspace-label">mi espacio</span></div>
+          <div class="topbar-right">
+            <span class="today-label" id="today-label"></span>
+            <button id="sidebar-toggle" class="top-icon-button" aria-label="Ocultar barra lateral" aria-expanded="true" title="Mostrar u ocultar barra lateral">☰</button>
+            <button id="customize-button" class="top-icon-button" aria-label="Personalizar escritorio" title="Personalizar escritorio">☼</button>
+            <button id="settings-button" class="top-icon-button" aria-label="Ajustes de cuenta" title="Ajustes de cuenta">⚙</button>
+            <button id="logout-button" class="top-icon-button logout-button" aria-label="Cerrar sesión" title="Cerrar sesión"><span aria-hidden="true">↪</span><span class="logout-label">Cerrar sesión</span></button>
+            <button id="profile-button" class="profile-button" aria-label="Abrir perfil">U</button>
+          </div>
+        </header>
+        <aside class="sidebar" aria-label="Explorador de espacios">
+          <div class="side-label">EXPLORADOR</div>
+          <button class="nav-item nav-folder active" data-panel="health"><span class="folder-caret" aria-hidden="true">›</span><span class="folder-mark" aria-hidden="true"></span><span>Salud</span></button>
+          <button class="nav-item nav-folder active" data-panel="study"><span class="folder-caret" aria-hidden="true">›</span><span class="folder-mark" aria-hidden="true"></span><span>Estudio</span></button>
+          <button class="nav-item nav-folder active" data-panel="finance"><span class="folder-caret" aria-hidden="true">›</span><span class="folder-mark" aria-hidden="true"></span><span>Economía</span></button>
+          <button class="nav-item nav-folder active" data-panel="fun"><span class="folder-caret" aria-hidden="true">›</span><span class="folder-mark" aria-hidden="true"></span><span>Entretenimiento</span></button>
+          <div class="sidebar-bottom"><button id="edit-profile" class="nav-item nav-folder profile-nav"><span class="folder-caret" aria-hidden="true">›</span><span class="folder-mark" aria-hidden="true"></span><span>Mi perfil</span></button><span class="sidebar-version">KAGAMI · BETA</span></div>
+        </aside>
+        <div class="workspace">
+        <div id="desktop-view">
+          <section id="canvas-view" class="canvas-view math-view" aria-label="Pizarra matemática">
+            <header id="math-header" class="math-header">
+              <div><span class="math-kicker">KAGAMI · PIZARRA</span><h1>Canvas Math</h1></div>
+              <div class="math-header-actions">
+                <button id="math-theme-toggle" class="canvas-button" type="button" aria-pressed="false">Modo claro</button>
+                <button id="math-graph-toggle" class="canvas-button" type="button" aria-expanded="false" aria-controls="math-graph-panel">Gráfico</button>
+              </div>
+            </header>
+            <div class="math-header-toggle-row">
+              <button id="math-header-toggle" class="canvas-button math-header-toggle" type="button" aria-expanded="true" aria-controls="math-header math-controls">Ocultar título y herramientas</button>
+            </div>
+            <div id="math-controls" class="math-controls" role="toolbar" aria-label="Herramientas de la pizarra">
+              <button id="math-undo" class="canvas-button" type="button" aria-label="Deshacer" title="Deshacer">↶</button>
+              <button id="math-redo" class="canvas-button" type="button" aria-label="Rehacer" title="Rehacer">↷</button>
+              <button id="math-eraser" class="canvas-button" type="button" aria-pressed="false">Borrador</button>
+              <label class="math-color-label" for="math-pen-color">Lápiz</label>
+              <input id="math-pen-color" type="color" value="#e7ddf6" aria-label="Color del lápiz" />
+              <label class="math-color-label" for="brush-size">Grosor</label>
+              <select id="brush-size" aria-label="Grosor del lápiz"><option value="2">Fino</option><option value="4" selected>Medio</option><option value="8">Grueso</option></select>
+              <button id="clear-canvas" class="canvas-button" type="button">Borrar todo</button>
+              <label class="math-expression-label" for="math-expression">Expresión</label>
+              <input id="math-expression" class="math-expression-input" type="text" placeholder="Escribe aquí si el reconocimiento no está disponible" autocomplete="off" />
+              <button id="math-solve" class="canvas-button canvas-download" type="button">Resolver</button>
+            </div>
+            <div class="math-status-row">
+              <span id="math-status" role="status">Escribe en la pizarra o introduce una operación con el teclado.</span>
+              <span id="math-answer" aria-live="polite"></span>
+            </div>
+            <div id="canvas-sheet" class="canvas-sheet math-sheet">
+              <canvas id="canvas-ink" aria-label="Escribe una operación matemática aquí con el ratón, lápiz o dedo"></canvas>
+            </div>
+            <section id="math-graph-panel" class="math-graph-panel" hidden aria-label="Gráfico de la expresión">
+              <div class="math-graph-heading"><strong>Gráfico</strong><span>Desplaza con el ratón · usa la rueda para acercar</span></div>
+              <canvas id="math-graph" aria-label="Gráfico interactivo de la función"></canvas>
+              <p id="math-graph-coordinates" aria-live="polite">Escribe una función o ecuación con x para graficar.</p>
+            </section>
+            <p class="canvas-hint math-hint">Pizarra local: el reconocimiento de escritura por IA requiere un backend seguro; nunca se envía tu dibujo con una clave expuesta.</p>
+          </section>
+          <div id="windows-area" class="windows-area">
+          <article id="window-health" class="widget-window" data-window="health">
+            <header class="window-header" data-drag-handle>
+              <div class="window-title"><span class="window-icon health-icon" aria-hidden="true">Sa</span><div><h2>Salud</h2><p>Tu bienestar primero</p></div></div>
+              <div class="window-controls">
+                <button class="window-control" data-minimize="health" aria-label="Minimizar Salud" title="Minimizar">−</button>
+                <button class="window-control" data-maximize="health" aria-label="Maximizar Salud" title="Maximizar">□</button>
+                <button class="window-control window-control-close" data-close="health" aria-label="Cerrar Salud" title="Cerrar">×</button>
+              </div>
+              </header>
+              <div class="window-body health-body">
+                <iframe id="health-model-frame" class="health-model-frame" src="Modelo%20corporal%20ajustable.html" title="Modelo corporal 3D ajustable y datos de salud" loading="eager"></iframe>
+                <div class="health-summary"><div class="health-ring"><span>✦</span></div><div><span class="mini-label">TU RECORDATORIO</span><h3 id="health-reminder">Un momento para respirar</h3><p id="health-detail">Pausar también es avanzar.</p></div></div>
+                <div class="widget-bottom-line"><span>¿Cómo te sientes hoy?</span><div class="mood-options"><button data-mood="Con energía" aria-label="Con energía">☀</button><button data-mood="En calma" aria-label="En calma">☁</button><button data-mood="Necesito una pausa" aria-label="Necesito una pausa">♡</button></div></div>
+              </div>
+            </article>
+            <article id="window-study" class="widget-window" data-window="study">
+              <header class="window-header" data-drag-handle>
+                <div class="window-title"><span class="window-icon study-icon" aria-hidden="true">Es</span><div><h2>Estudio</h2><p>Pequeños pasos, grandes ideas</p></div></div>
+                <div class="window-controls">
+                  <button class="window-control" data-minimize="study" aria-label="Minimizar Estudio" title="Minimizar">−</button>
+                  <button class="window-control" data-maximize="study" aria-label="Maximizar Estudio" title="Maximizar">□</button>
+                  <button class="window-control window-control-close" data-close="study" aria-label="Cerrar Estudio" title="Cerrar">×</button>
+                </div>
+              </header>
+              <div class="window-body">
+                <div class="study-focus"><span class="mini-label">EN LO QUE QUIERES CRECER</span><h3 id="study-goal">Cada día, un poco más</h3><p id="study-detail">Aprender a tu manera también cuenta.</p></div>
+                <div class="progress-label"><span>Ritmo de hoy</span><span>25 min sugeridos</span></div>
+                <div class="progress-track"><span style="width: 36%"></span></div>
+                <button class="inline-action" id="study-action">Empezar una sesión <span>→</span></button>
+              </div>
+            </article>
+            <article id="window-finance" class="widget-window" data-window="finance">
+              <header class="window-header" data-drag-handle>
+                <div class="window-title"><span class="window-icon finance-icon" aria-hidden="true">Ec</span><div><h2>Economía</h2><p>Claridad para tus decisiones</p></div></div>
+                <div class="window-controls">
+                  <button class="window-control" data-minimize="finance" aria-label="Minimizar Economía" title="Minimizar">−</button>
+                  <button class="window-control" data-maximize="finance" aria-label="Maximizar Economía" title="Maximizar">□</button>
+                  <button class="window-control window-control-close" data-close="finance" aria-label="Cerrar Economía" title="Cerrar">×</button>
+                </div>
+              </header>
+              <div class="window-body">
+                <div class="finance-summary"><div><span class="mini-label">OBJETIVO PERSONAL</span><h3 id="finance-goal">Un futuro con intención</h3></div><div class="finance-sparkline"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                <p class="finance-advice" id="finance-detail">Conocer tus hábitos es el primer paso para elegir.</p>
+                <button class="inline-action" id="finance-action">Registrar un avance <span>→</span></button>
+              </div>
+            </article>
+            <article id="window-fun" class="widget-window" data-window="fun">
+              <header class="window-header" data-drag-handle>
+                <div class="window-title"><span class="window-icon fun-icon" aria-hidden="true">En</span><div><h2>Entretenimiento</h2><p>También mereces disfrutar</p></div></div>
+                <div class="window-controls">
+                  <button class="window-control" data-minimize="fun" aria-label="Minimizar Entretenimiento" title="Minimizar">−</button>
+                  <button class="window-control" data-maximize="fun" aria-label="Maximizar Entretenimiento" title="Maximizar">□</button>
+                  <button class="window-control window-control-close" data-close="fun" aria-label="Cerrar Entretenimiento" title="Cerrar">×</button>
+                </div>
+              </header>
+              <div class="window-body fun-body">
+                <div class="fun-art"><span>✳</span><span>✦</span><span>◌</span></div>
+                <div class="fun-copy"><span class="mini-label">TU MOMENTO LIBRE</span><h3 id="fun-goal">Un rato para ti</h3><p id="fun-detail">¿Qué te gustaría disfrutar hoy?</p></div>
+                <button id="fun-action" class="fun-play" aria-label="Sugerir una actividad">↗</button>
+              </div>
+            </article>
+          </div>
+          <div id="window-taskbar" class="window-taskbar" aria-label="Ventanas minimizadas"></div>
+        </div>
+        <div id="customize-popover" class="customize-popover hidden">
+          <div class="popover-heading"><div><span class="mini-label">TU ESCRITORIO</span><h3>Hazlo tuyo</h3></div><button id="close-customize" class="window-close" aria-label="Cerrar">×</button></div>
+          <label for="theme-select">Apariencia</label>
+          <select id="theme-select"><option value="dark">Noche estelar</option><option value="light">Luz de galaxia</option><option value="lavender">Nebulosa violeta</option></select>
+          <label class="toggle-row"><span>Mostrar los cuatro espacios</span><input id="show-all" type="checkbox" /></label>
+          <button id="reset-layout" class="text-button">Restablecer escritorio</button>
+        </div>
+        <div id="settings-dialog" class="settings-overlay hidden">
+          <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <header class="settings-heading">
+              <div><span class="mini-label">TU CUENTA</span><h2 id="settings-title">Ajustes</h2></div>
+              <button id="close-settings" class="window-close" type="button" aria-label="Cerrar ajustes">×</button>
+            </header>
+            <form id="settings-form" novalidate>
+              <div class="settings-profile">
+                <img id="settings-avatar-preview" class="settings-avatar-preview hidden" alt="Vista previa de foto de perfil" />
+                <span id="settings-avatar-fallback" class="settings-avatar-fallback">K</span>
+                <div><strong>Foto de perfil</strong><p>Elige una imagen para identificar tu espacio.</p></div>
+                <input id="settings-avatar-file" class="settings-file-input" type="file" accept="image/*" />
+                <label class="settings-file-button" for="settings-avatar-file">Elegir foto</label>
+              </div>
+              <div class="settings-fields">
+                <label for="settings-name">Nombre</label>
+                <input id="settings-name" name="name" autocomplete="name" maxlength="60" required />
+                <label for="settings-email">Correo electrónico</label>
+                <input id="settings-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="tu@correo.com" />
+              </div>
+              <section class="settings-section" aria-labelledby="settings-password-title">
+                <div><h3 id="settings-password-title">Cambiar contraseña</h3><p>Déjala en blanco si no quieres cambiarla.</p></div>
+                <div class="settings-fields password-fields">
+                  <label for="settings-current-password">Contraseña actual</label>
+                  <input id="settings-current-password" type="password" autocomplete="current-password" />
+                  <label for="settings-new-password">Nueva contraseña</label>
+                  <input id="settings-new-password" type="password" autocomplete="new-password" minlength="8" />
+                  <label for="settings-confirm-password">Confirmar nueva contraseña</label>
+                  <input id="settings-confirm-password" type="password" autocomplete="new-password" minlength="8" />
+                </div>
+              </section>
+              <p id="settings-error" class="form-error" role="alert"></p>
+              <footer class="settings-actions">
+                <button id="cancel-settings" class="button button-quiet" type="button">Cancelar</button>
+                <button id="save-settings" class="button button-primary" type="submit">Guardar ajustes <span>→</span></button>
+              </footer>
+            </form>
+          </section>
+        </div>
+        <div id="toast" class="toast" role="status"></div>
+      </section>
+    </main>
+    <script src="tracking.js"></script>
+    <script src="app.js?v=12"></script>
+  </body>
+</html>
